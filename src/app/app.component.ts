@@ -1,78 +1,114 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule, Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterModule],
   template: `
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
       <div class="container">
         <a class="navbar-brand" routerLink="/dashboard">
-          <i class="fas fa-calendar-alt me-2"></i>Mon Agenda
+          <i class="fa fa-calendar me-2"></i>Mon Agenda
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav"
+                aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav me-auto" *ngIf="authService.isLoggedIn()">
+          <ul class="navbar-nav me-auto" *ngIf="isLoggedIn">
             <li class="nav-item">
               <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
-                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                <i class="fa fa-dashboard me-1"></i> Dashboard
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="/tasks" routerLinkActive="active">
-                <i class="fas fa-tasks me-1"></i>Tâches
+                <i class="fa fa-tasks me-1"></i> Tâches
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="/calendar" routerLinkActive="active">
-                <i class="fas fa-calendar me-1"></i>Calendrier
+                <i class="fa fa-calendar me-1"></i> Calendrier
               </a>
             </li>
           </ul>
 
-          <div class="navbar-nav" *ngIf="authService.isLoggedIn()">
+          <div class="navbar-nav" *ngIf="isLoggedIn">
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                <i class="fas fa-user me-1"></i>{{ authService.getUserNom() }}
+              <a class="nav-link dropdown-toggle" href="#" role="button"
+                 data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa fa-user me-1"></i> {{ currentUser?.nom }}
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" (click)="logout()">
-                  <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                  <i class="fa fa-sign-out me-1"></i> Déconnexion
                 </a></li>
               </ul>
+            </li>
+          </div>
+
+          <div class="navbar-nav" *ngIf="!isLoggedIn">
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/login">Connexion</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/register">Inscription</a>
             </li>
           </div>
         </div>
       </div>
     </nav>
 
-    <div class="container mt-4">
+    <main class="container mt-4">
       <router-outlet></router-outlet>
-    </div>
+    </main>
+
+    <footer class="bg-light text-center py-3 mt-5 border-top">
+      <div class="container">
+        <span class="text-muted">© 2024 Mon Agenda - Gestion de tâches</span>
+      </div>
+    </footer>
   `,
   styles: [`
-    .navbar {
-      margin-bottom: 20px;
+    .navbar-nav .nav-link.active {
+      font-weight: bold;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
     }
-    .nav-link {
-      cursor: pointer;
-    }
+
     .dropdown-item {
       cursor: pointer;
     }
+
+    main {
+      min-height: calc(100vh - 150px);
+    }
   `]
 })
-export class AppComponent {
-  authService = inject(AuthService);
+export class AppComponent implements OnInit {
+  isLoggedIn = false;
+  currentUser: any = null;
 
-  logout(): void {
-    this.authService.logout(); // PAS de .subscribe() car c'est void
+  constructor(private authService: AuthService, private router: Router) {}
+
+  ngOnInit() {
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+      this.isLoggedIn = !!user;
+    });
+  }
+
+  logout() {
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/login']);
+      }
+    });
   }
 }

@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService, RegisterRequest } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -12,39 +12,43 @@ import { AuthService, RegisterRequest } from '../../../services/auth.service';
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-4">
         <div class="card shadow">
-          <div class="card-header bg-success text-white">
+          <div class="card-header bg-success text-white text-center py-3">
             <h4 class="mb-0">
-              <i class="fas fa-user-plus me-2"></i>Inscription
+              <i class="fa fa-user-plus me-2"></i>Inscription
             </h4>
           </div>
-          <div class="card-body">
+
+          <div class="card-body p-4">
             <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
               <div class="mb-3">
-                <label for="nom" class="form-label">Nom</label>
-                <input
-                  type="text"
-                  id="nom"
-                  class="form-control"
-                  formControlName="nom"
-                  [class.is-invalid]="registerForm.get('nom')?.invalid && registerForm.get('nom')?.touched">
+                <label for="nom" class="form-label">
+                  <i class="fa fa-user me-1"></i> Nom complet
+                </label>
+                <input type="text" id="nom" formControlName="nom"
+                       class="form-control"
+                       [class.is-invalid]="registerForm.get('nom')?.invalid && registerForm.get('nom')?.touched"
+                       placeholder="Votre nom">
                 <div class="invalid-feedback" *ngIf="registerForm.get('nom')?.errors?.['required']">
-                  Le nom est requis
+                  Le nom est obligatoire
                 </div>
                 <div class="invalid-feedback" *ngIf="registerForm.get('nom')?.errors?.['minlength']">
                   Minimum 2 caractères
                 </div>
+                <div class="invalid-feedback" *ngIf="registerForm.get('nom')?.errors?.['maxlength']">
+                  Maximum 50 caractères
+                </div>
               </div>
 
               <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  class="form-control"
-                  formControlName="email"
-                  [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+                <label for="email" class="form-label">
+                  <i class="fa fa-envelope me-1"></i> Email
+                </label>
+                <input type="email" id="email" formControlName="email"
+                       class="form-control"
+                       [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+                       placeholder="votre@email.com">
                 <div class="invalid-feedback" *ngIf="registerForm.get('email')?.errors?.['required']">
-                  L'email est requis
+                  L'email est obligatoire
                 </div>
                 <div class="invalid-feedback" *ngIf="registerForm.get('email')?.errors?.['email']">
                   Email invalide
@@ -52,50 +56,42 @@ import { AuthService, RegisterRequest } from '../../../services/auth.service';
               </div>
 
               <div class="mb-3">
-                <label for="password" class="form-label">Mot de passe</label>
-                <input
-                  type="password"
-                  id="password"
-                  class="form-control"
-                  formControlName="password"
-                  [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+                <label for="password" class="form-label">
+                  <i class="fa fa-lock me-1"></i> Mot de passe
+                </label>
+                <input type="password" id="password" formControlName="password"
+                       class="form-control"
+                       [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+                       placeholder="Minimum 6 caractères">
                 <div class="invalid-feedback" *ngIf="registerForm.get('password')?.errors?.['required']">
-                  Le mot de passe est requis
+                  Le mot de passe est obligatoire
                 </div>
                 <div class="invalid-feedback" *ngIf="registerForm.get('password')?.errors?.['minlength']">
                   Minimum 6 caractères
                 </div>
               </div>
 
-              <div class="mb-3" *ngIf="errorMessage">
-                <div class="alert alert-danger alert-dismissible fade show">
-                  {{ errorMessage }}
-                  <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
-                </div>
-              </div>
-
-              <div class="mb-3" *ngIf="successMessage">
-                <div class="alert alert-success alert-dismissible fade show">
-                  {{ successMessage }}
-                  <button type="button" class="btn-close" (click)="successMessage = ''"></button>
-                </div>
-              </div>
-
-              <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-success" [disabled]="registerForm.invalid || isLoading">
-                  <span *ngIf="!isLoading">S'inscrire</span>
-                  <span *ngIf="isLoading">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                    Inscription...
+              <div class="d-grid gap-2 mb-3">
+                <button type="submit" class="btn btn-success" [disabled]="loading || registerForm.invalid">
+                  <span *ngIf="!loading">
+                    <i class="fa fa-user-plus me-1"></i> S'inscrire
+                  </span>
+                  <span *ngIf="loading">
+                    <i class="fa fa-spinner fa-spin me-1"></i> Inscription...
                   </span>
                 </button>
               </div>
+
+              <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show">
+                {{ errorMessage }}
+                <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+              </div>
             </form>
 
-            <div class="mt-3 text-center">
+            <div class="text-center mt-3">
               <p class="mb-0">
                 Déjà un compte ?
-                <a routerLink="/login" class="text-success">Se connecter</a>
+                <a routerLink="/login" class="text-decoration-none">Se connecter</a>
               </p>
             </div>
           </div>
@@ -103,47 +99,58 @@ import { AuthService, RegisterRequest } from '../../../services/auth.service';
       </div>
     </div>
   `,
-  styles: []
+  styles: [`
+    .card {
+      margin-top: 80px;
+      border: none;
+    }
+
+    .card-header {
+      border-radius: 0 !important;
+    }
+  `]
 })
 export class RegisterComponent {
-  private fb = inject(FormBuilder);
-  private authService = inject(AuthService);
-  private router = inject(Router);
-
   registerForm: FormGroup;
-  isLoading = false;
+  loading = false;
   errorMessage = '';
   successMessage = '';
 
-  constructor() {
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {
     this.registerForm = this.fb.group({
-      nom: ['', [Validators.required, Validators.minLength(2)]],
+      nom: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
-  onSubmit(): void {
+  onSubmit() {
     if (this.registerForm.valid) {
-      this.isLoading = true;
+      this.loading = true;
       this.errorMessage = '';
-      this.successMessage = '';
 
-      const userData: RegisterRequest = this.registerForm.value;
-
-      this.authService.register(userData).subscribe({
+      this.authService.register(this.registerForm.value).subscribe({
         next: (response) => {
-          this.successMessage = response.message || 'Inscription réussie ! Redirection...';
+          this.loading = false;
+          this.successMessage = 'Inscription réussie ! Redirection vers la page de connexion...';
+
+
           setTimeout(() => {
-            this.router.navigate(['/login']);
+            this.router.navigate(['/login'], {
+              queryParams: { registered: 'true' }
+            });
           }, 2000);
         },
         error: (error) => {
-          this.isLoading = false;
-          this.errorMessage = error.error?.error || "Échec de l'inscription. Veuillez réessayer.";
+          this.loading = false;
+          this.errorMessage = error.error?.error || 'Erreur lors de l\'inscription';
         },
         complete: () => {
-          this.isLoading = false;
+          this.loading = false;
         }
       });
     }

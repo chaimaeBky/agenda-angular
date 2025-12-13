@@ -1,157 +1,225 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TaskService } from '../../../services/task.service';
-import { Task, Priorite, Statut } from '../../../models/task.model';
 import { FormsModule } from '@angular/forms';
-
-interface CalendarDay {
-  date: Date;
-  isCurrentMonth: boolean;
-  events: CalendarEvent[];
-}
-
-interface CalendarEvent {
-  id?: number;
-  title: string;
-  date: string;
-  heure?: string;
-  priorite: Priorite;
-  statut: Statut;
-  description?: string;
-}
+import { RouterModule } from '@angular/router';
+import { TaskService } from '../../../services/task.service';
+import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
 
 @Component({
   selector: 'app-calendar-view',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="row mb-4">
-      <div class="col">
-        <h2><i class="fas fa-calendar-alt me-2"></i>Calendrier</h2>
-        <p class="text-muted">Visualisez vos tâches par mois</p>
-      </div>
-      <div class="col-auto">
-        <div class="btn-group">
-          <button class="btn btn-outline-secondary" (click)="previousMonth()">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button class="btn btn-outline-secondary" disabled>
-            {{ getMonthYear() }}
-          </button>
-          <button class="btn btn-outline-secondary" (click)="nextMonth()">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-          <button class="btn btn-outline-primary ms-2" (click)="goToToday()">
-            <i class="fas fa-calendar-check me-2"></i>Aujourd'hui
-          </button>
+    <div class="calendar-view">
+      <div class="row mb-4">
+        <div class="col">
+          <h2 class="mb-0">
+            <i class="fa fa-calendar me-2"></i>Calendrier
+          </h2>
+          <p class="text-muted mb-0">Visualisez vos tâches par mois</p>
+        </div>
+        <div class="col-auto">
+          <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-outline-secondary" (click)="previousMonth()">
+              <i class="fa fa-chevron-left"></i>
+            </button>
+
+            <h4 class="mb-0 mx-3">
+              {{ getMonthName(currentMonth) }} {{ currentYear }}
+            </h4>
+
+            <button class="btn btn-outline-secondary" (click)="nextMonth()">
+              <i class="fa fa-chevron-right"></i>
+            </button>
+
+            <button class="btn btn-primary ms-3" (click)="goToToday()">
+              <i class="fa fa-calendar-check me-1"></i> Aujourd'hui
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Navigation par mois -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="row g-2">
-          <div class="col-md-4">
-            <div class="input-group">
-              <span class="input-group-text"><i class="fas fa-search"></i></span>
-              <input type="month" class="form-control" [value]="currentYear + '-' + padMonth(currentMonth)"
-                     (change)="onMonthChange($event)">
-            </div>
-          </div>
-          <div class="col-md-8">
-            <div class="d-flex justify-content-end">
-              <div class="btn-group">
-                <button class="btn btn-outline-primary active">
-                  <i class="fas fa-calendar-alt me-2"></i>Vue mois
-                </button>
+      <!-- Contrôles -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="fa fa-filter"></i>
+                </span>
+                <select class="form-select" [(ngModel)]="filterStatus" (change)="loadTasksForMonth()">
+                  <option value="">Tous les statuts</option>
+                  <option *ngFor="let status of statusOptions" [value]="status">
+                    {{ getStatusLabel(status) }}
+                  </option>
+                </select>
               </div>
             </div>
+            <div class="col-md-4">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="fa fa-sort-amount-asc"></i>
+                </span>
+                <select class="form-select" [(ngModel)]="filterPriority" (change)="loadTasksForMonth()">
+                  <option value="">Toutes les priorités</option>
+                  <option *ngFor="let priority of priorityOptions" [value]="priority">
+                    {{ getPriorityLabel(priority) }}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4 text-end">
+              <button class="btn btn-success" routerLink="/tasks/new">
+                <i class="fa fa-plus me-1"></i> Ajouter au calendrier
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Calendrier -->
-    <div class="card">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-bordered mb-0">
-            <thead>
-              <tr class="table-light">
-                <th class="text-center" style="width: 14.28%">Lundi</th>
-                <th class="text-center" style="width: 14.28%">Mardi</th>
-                <th class="text-center" style="width: 14.28%">Mercredi</th>
-                <th class="text-center" style="width: 14.28%">Jeudi</th>
-                <th class="text-center" style="width: 14.28%">Vendredi</th>
-                <th class="text-center" style="width: 14.28%">Samedi</th>
-                <th class="text-center" style="width: 14.28%">Dimanche</th>
+      <!-- Calendrier -->
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+              <thead class="table-light">
+              <tr>
+                <th class="text-center" style="width: 14.28%">Lun</th>
+                <th class="text-center" style="width: 14.28%">Mar</th>
+                <th class="text-center" style="width: 14.28%">Mer</th>
+                <th class="text-center" style="width: 14.28%">Jeu</th>
+                <th class="text-center" style="width: 14.28%">Ven</th>
+                <th class="text-center" style="width: 14.28%">Sam</th>
+                <th class="text-center" style="width: 14.28%">Dim</th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               <tr *ngFor="let week of calendarWeeks">
-                <td *ngFor="let day of week" class="calendar-day" [ngClass]="{
-                  'today': isToday(day.date),
-                  'other-month': !day.isCurrentMonth,
-                  'has-events': day.events.length > 0
-                }">
-                  <div class="calendar-day-header">
-                    <span class="day-number">{{ day.date.getDate() }}</span>
-                    <span *ngIf="isToday(day.date)" class="badge bg-danger ms-1">Aujourd'hui</span>
-                  </div>
-                  <div class="calendar-events">
-                    <div *ngFor="let event of day.events" class="calendar-event"
-                         [style.backgroundColor]="getPriorityColor(event.priorite)">
-                      <div class="event-content">
-                        <strong>{{ event.title }}</strong>
-                        <small *ngIf="event.heure">{{ event.heure }}</small>
-                        <span class="badge" [ngClass]="getStatusClass(event.statut)">
-                          {{ getStatutLabel(event.statut) }}
+                <td *ngFor="let day of week"
+                    [class.table-secondary]="!day.isCurrentMonth"
+                    [class.today]="day.isToday"
+                    class="calendar-day p-2"
+                    [style.height]="'150px'"
+                    (click)="selectDay(day)">
+
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="badge" [class.bg-primary]="day.isToday">
+                          {{ day.date.getDate() }}
                         </span>
+                      <small class="text-muted ms-1" *ngIf="!day.isCurrentMonth">
+                        {{ getMonthName(day.date.getMonth()) }}
+                      </small>
+                    </div>
+                    <small *ngIf="day.taskCount > 0" class="badge bg-info">
+                      {{ day.taskCount }}
+                    </small>
+                  </div>
+
+                  <div class="day-tasks">
+                    <div *ngFor="let task of day.tasks"
+                         class="task-item small mb-1 p-1 rounded"
+                         [class.bg-success]="task.statut === 'TERMINEE'"
+                         [class.bg-warning]="task.statut === 'EN_COURS'"
+                         [class.bg-primary]="task.statut === 'A_FAIRE'"
+                         [class.bg-danger]="task.priorite === 'URGENTE'"
+                         [style.opacity]="task.statut === 'TERMINEE' ? '0.7' : '1'"
+                         (click)="viewTask(task); $event.stopPropagation()">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-truncate text-white">
+                          {{ task.titre }}
+                        </div>
+                        <small class="text-white ms-1">
+                          <i class="fa"
+                             [class.fa-check]="task.statut === 'TERMINEE'"
+                             [class.fa-spinner]="task.statut === 'EN_COURS'"
+                             [class.fa-clock]="task.statut === 'A_FAIRE'">
+                          </i>
+                        </small>
+                      </div>
+                      <div *ngIf="task.heure" class="text-white small">
+                        {{ task.heure }}
                       </div>
                     </div>
                   </div>
+
                 </td>
               </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Légende -->
-    <div class="row mt-4">
-      <div class="col">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Légende</h6>
-            <div class="row g-3">
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge bg-danger me-2">Aujourd'hui</span>
-                <span class="text-muted">Jour actuel</span>
-              </div>
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge" [style.background]="getPriorityColor(Priorite.URGENTE)">Urgente</span>
-                <span class="text-muted ms-2">Priorité urgente</span>
-              </div>
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge" [style.background]="getPriorityColor(Priorite.HAUTE)">Haute</span>
-                <span class="text-muted ms-2">Priorité haute</span>
-              </div>
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge" [style.background]="getPriorityColor(Priorite.MOYENNE)">Moyenne</span>
-                <span class="text-muted ms-2">Priorité moyenne</span>
-              </div>
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge" [style.background]="getPriorityColor(Priorite.BASSE)">Basse</span>
-                <span class="text-muted ms-2">Priorité basse</span>
-              </div>
-              <div class="col-auto d-flex align-items-center">
-                <span class="badge bg-primary me-1"></span>
-                <span class="badge bg-success me-1"></span>
-                <span class="badge bg-secondary me-1"></span>
-                <span class="badge bg-danger me-1"></span>
-                <span class="text-muted">Statuts (À faire, Terminée, En cours, Annulée)</span>
+      <!-- Légende -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <h6 class="mb-3">
+            <i class="fa fa-key me-2"></i>Légende
+          </h6>
+          <div class="row">
+            <div class="col-auto mb-2">
+              <span class="badge bg-primary me-1">Aujourd'hui</span>
+              <small>Jour actuel</small>
+            </div>
+            <div class="col-auto mb-2">
+              <span class="badge bg-success me-1">Terminée</span>
+              <small>Tâche terminée</small>
+            </div>
+            <div class="col-auto mb-2">
+              <span class="badge bg-warning me-1">En cours</span>
+              <small>Tâche en cours</small>
+            </div>
+            <div class="col-auto mb-2">
+              <span class="badge bg-danger me-1">Urgente</span>
+              <small>Priorité urgente </small>
+            </div>
+            <div class="col-auto mb-2">
+              <span class="badge bg-info me-1">Nombre</span>
+              <small>Nombre de tâches</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tâches du jour sélectionné -->
+      <div class="card mt-4" *ngIf="selectedDay && selectedDayTasks.length > 0">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i class="fa fa-list me-2"></i>
+            Tâches du {{ selectedDay.date | date:'dd/MM/yyyy' }}
+            <span class="badge bg-primary ms-2">{{ selectedDayTasks.length }}</span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <div *ngFor="let task of selectedDayTasks" class="list-group-item">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-1">{{ task.titre }}</h6>
+                  <small class="text-muted">{{ task.description || 'Aucune description' }}</small>
+                  <div class="mt-1">
+                    <span class="badge me-1"
+                          [class.bg-success]="task.priorite === 'BASSE'"
+                          [class.bg-primary]="task.priorite === 'MOYENNE'"
+                          [class.bg-warning]="task.priorite === 'HAUTE'"
+                          [class.bg-danger]="task.priorite === 'URGENTE'">
+                      {{ getPriorityLabel(task.priorite) }}
+                    </span>
+                    <span class="badge"
+                          [class.bg-secondary]="task.statut === 'A_FAIRE'"
+                          [class.bg-warning]="task.statut === 'EN_COURS'"
+                          [class.bg-success]="task.statut === 'TERMINEE'">
+                      {{ getStatusLabel(task.statut) }}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <button class="btn btn-outline-primary btn-sm" [routerLink]="['/tasks/edit', task.id]">
+                    <i class="fa fa-edit"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -161,283 +229,226 @@ interface CalendarEvent {
   `,
   styles: [`
     .calendar-day {
-      height: 150px;
       vertical-align: top;
-      padding: 5px;
-      border: 1px solid #dee2e6;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .calendar-day:hover {
+      background-color: rgba(0, 123, 255, 0.05) !important;
     }
 
     .calendar-day.today {
-      background-color: rgba(13, 110, 253, 0.1);
+      background-color: rgba(0, 123, 255, 0.1) !important;
     }
 
-    .calendar-day.other-month {
-      background-color: #f8f9fa;
-      color: #6c757d;
-    }
-
-    .calendar-day.has-events {
-      background-color: rgba(255, 255, 255, 0.9);
-    }
-
-    .calendar-day-header {
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-
-    .calendar-events {
-      max-height: 110px;
+    .day-tasks {
+      max-height: 100px;
       overflow-y: auto;
     }
 
-    .calendar-event {
-      padding: 3px 5px;
-      margin-bottom: 3px;
-      border-radius: 4px;
-      color: white;
-      font-size: 0.75rem;
+    .task-item {
       cursor: pointer;
+      transition: transform 0.2s;
     }
 
-    .calendar-event:hover {
-      opacity: 0.9;
+    .task-item:hover {
+      transform: translateX(2px);
     }
 
-    .event-content {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    .table-bordered {
+      border: 1px solid #dee2e6;
     }
 
-    .event-content strong {
-      font-size: 0.8rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .event-content small {
-      opacity: 0.9;
-    }
-
-    .day-number {
-      font-size: 1.1rem;
-    }
-
-    table {
-      table-layout: fixed;
-    }
-
-    th {
-      text-align: center;
-      font-weight: 600;
+    .table-bordered th, .table-bordered td {
+      border: 1px solid #dee2e6;
     }
   `]
 })
 export class CalendarViewComponent implements OnInit {
-  private taskService = inject(TaskService);
-
   currentDate = new Date();
-  currentMonth: number;
-  currentYear: number;
-  calendarWeeks: CalendarDay[][] = [];
-  events: CalendarEvent[] = [];
+  currentYear = this.currentDate.getFullYear();
+  currentMonth = this.currentDate.getMonth() + 1; // 1-12
 
-  constructor() {
-    this.currentMonth = this.currentDate.getMonth();
-    this.currentYear = this.currentDate.getFullYear();
-  }
+  calendarWeeks: any[] = [];
+  tasks: Task[] = [];
+  filteredTasks: Task[] = [];
+
+  selectedDay: any = null;
+  selectedDayTasks: Task[] = [];
+
+  filterStatus: string = '';
+  filterPriority: string = '';
+
+  statusOptions = Object.values(TaskStatus);
+  priorityOptions = Object.values(TaskPriority);
+
+  loading = false;
+
+  constructor(private taskService: TaskService) {}
 
   ngOnInit() {
+    this.loadTasksForMonth();
     this.generateCalendar();
-    this.loadEvents();
+  }
+
+  loadTasksForMonth() {
+    this.loading = true;
+    this.taskService.getTasksByMonth(this.currentYear, this.currentMonth).subscribe({
+      next: (tasks) => {
+        this.tasks = tasks;
+        this.applyFilters();
+        this.loading = false;
+        this.generateCalendar();
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement des tâches:', error);
+        this.loading = false;
+      }
+    });
+  }
+
+  applyFilters() {
+    this.filteredTasks = [...this.tasks];
+
+    if (this.filterStatus) {
+      this.filteredTasks = this.filteredTasks.filter(task => task.statut === this.filterStatus);
+    }
+
+    if (this.filterPriority) {
+      this.filteredTasks = this.filteredTasks.filter(task => task.priorite === this.filterPriority);
+    }
   }
 
   generateCalendar() {
     this.calendarWeeks = [];
 
-    const firstDay = new Date(this.currentYear, this.currentMonth, 1);
-    const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
+    // Premier jour du mois
+    const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1);
+    // Dernier jour du mois
+    const lastDay = new Date(this.currentYear, this.currentMonth, 0);
 
-    const firstDayOfWeek = (firstDay.getDay() + 6) % 7; // Lundi = 0
-    const totalDays = lastDay.getDate();
+    // Premier jour de la semaine (Lundi = 1, ajustement pour JS où Dimanche = 0)
+    let firstDayOfWeek = firstDay.getDay();
+    if (firstDayOfWeek === 0) firstDayOfWeek = 7; // Dimanche devient 7
+    firstDayOfWeek--; // Ajuster pour commencer à 0 (Lundi)
 
-    let week: CalendarDay[] = [];
-    let dayCounter = 1;
+    // Dernier jour de la semaine
+    let lastDayOfWeek = lastDay.getDay();
+    if (lastDayOfWeek === 0) lastDayOfWeek = 7;
+    lastDayOfWeek--;
 
-    // Jours du mois précédent
-    const prevMonthLastDay = new Date(this.currentYear, this.currentMonth, 0).getDate();
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      const date = new Date(this.currentYear, this.currentMonth - 1, prevMonthLastDay - firstDayOfWeek + i + 1);
-      week.push({
-        date: date,
-        isCurrentMonth: false,
-        events: this.getEventsForDate(date)
-      });
-    }
+    // Date du jour
+    const today = new Date();
+    const isToday = (date: Date) =>
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
 
-    // Jours du mois courant
-    while (dayCounter <= totalDays) {
-      for (let i = week.length; i < 7; i++) {
-        if (dayCounter > totalDays) break;
+    // Calculer les dates
+    let currentDate = new Date(firstDay);
+    currentDate.setDate(currentDate.getDate() - firstDayOfWeek);
 
-        const date = new Date(this.currentYear, this.currentMonth, dayCounter);
-        week.push({
+    // Générer 6 semaines (maximum)
+    for (let week = 0; week < 6; week++) {
+      const weekDays = [];
+
+      for (let day = 0; day < 7; day++) {
+        const date = new Date(currentDate);
+        const isCurrentMonth = date.getMonth() === this.currentMonth - 1;
+
+        // Trouver les tâches pour ce jour
+        const dateStr = date.toISOString().split('T')[0];
+        const dayTasks = this.filteredTasks.filter(task => task.date === dateStr);
+
+        weekDays.push({
           date: date,
-          isCurrentMonth: true,
-          events: this.getEventsForDate(date)
+          isCurrentMonth: isCurrentMonth,
+          isToday: isToday(date),
+          taskCount: dayTasks.length,
+          tasks: dayTasks.slice(0, 3) // Limiter à 3 tâches pour l'affichage
         });
-        dayCounter++;
+
+        // Passer au jour suivant
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      if (week.length === 7) {
-        this.calendarWeeks.push(week);
-        week = [];
+      this.calendarWeeks.push(weekDays);
+
+      // Si nous avons dépassé le dernier jour du mois et que nous sommes dans le mois suivant
+      if (currentDate.getMonth() > this.currentMonth % 12 && currentDate > lastDay) {
+        break;
       }
     }
-
-    // Jours du mois suivant
-    if (week.length > 0) {
-      let nextDay = 1;
-      for (let i = week.length; i < 7; i++) {
-        const date = new Date(this.currentYear, this.currentMonth + 1, nextDay);
-        week.push({
-          date: date,
-          isCurrentMonth: false,
-          events: this.getEventsForDate(date)
-        });
-        nextDay++;
-      }
-      this.calendarWeeks.push(week);
-    }
-  }
-
-  getEventsForDate(date: Date): CalendarEvent[] {
-    const dateStr = date.toISOString().split('T')[0];
-    return this.events.filter(event => event.date === dateStr);
-  }
-
-  loadEvents() {
-    this.taskService.getTasksByMonth(this.currentYear, this.currentMonth + 1).subscribe({
-      next: (tasks: Task[]) => {
-        // Convertir les tâches en événements de calendrier
-        this.events = tasks.map(task => ({
-          id: task.id,
-          title: task.titre,
-          date: task.date,
-          heure: task.heure,
-          priorite: task.priorite,
-          statut: task.statut,
-          description: task.description
-        }));
-        this.generateCalendar();
-      },
-      error: (error) => {
-        console.error('Erreur lors du chargement des événements:', error);
-      }
-    });
   }
 
   previousMonth() {
-    if (this.currentMonth === 0) {
-      this.currentMonth = 11;
+    if (this.currentMonth === 1) {
+      this.currentMonth = 12;
       this.currentYear--;
     } else {
       this.currentMonth--;
     }
-    this.generateCalendar();
-    this.loadEvents();
+    this.loadTasksForMonth();
   }
 
   nextMonth() {
-    if (this.currentMonth === 11) {
-      this.currentMonth = 0;
+    if (this.currentMonth === 12) {
+      this.currentMonth = 1;
       this.currentYear++;
     } else {
       this.currentMonth++;
     }
-    this.generateCalendar();
-    this.loadEvents();
+    this.loadTasksForMonth();
   }
 
   goToToday() {
-    this.currentDate = new Date();
-    this.currentMonth = this.currentDate.getMonth();
-    this.currentYear = this.currentDate.getFullYear();
-    this.generateCalendar();
-    this.loadEvents();
+    const today = new Date();
+    this.currentYear = today.getFullYear();
+    this.currentMonth = today.getMonth() + 1;
+    this.loadTasksForMonth();
   }
 
-  onMonthChange(event: any) {
-    const value = event.target.value;
-    if (value) {
-      const [year, month] = value.split('-');
-      this.currentYear = parseInt(year);
-      this.currentMonth = parseInt(month) - 1;
-      this.generateCalendar();
-      this.loadEvents();
-    }
+  selectDay(day: any) {
+    this.selectedDay = day;
+    this.selectedDayTasks = day.tasks;
   }
 
-  padMonth(month: number): string {
-    return (month + 1).toString().padStart(2, '0');
+  viewTask(task: Task) {
+    alert(`Détails de la tâche:\n\n` +
+      `Titre: ${task.titre}\n` +
+      `Description: ${task.description || 'Aucune'}\n` +
+      `Date: ${task.date}\n` +
+      `Heure: ${task.heure || 'Non définie'}\n` +
+      `Priorité: ${this.getPriorityLabel(task.priorite)}\n` +
+      `Statut: ${this.getStatusLabel(task.statut)}`);
   }
 
-  getMonthYear(): string {
+  getMonthName(month: number): string {
     const months = [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ];
-    return `${months[this.currentMonth]} ${this.currentYear}`;
+    return months[month - 1];
   }
 
-  isToday(date: Date): boolean {
-    const today = new Date();
-    return date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear();
+  getStatusLabel(status: TaskStatus): string {
+    const labels: Record<TaskStatus, string> = {
+      [TaskStatus.A_FAIRE]: 'À faire',
+      [TaskStatus.EN_COURS]: 'En cours',
+      [TaskStatus.TERMINEE]: 'Terminée',
+      [TaskStatus.ANNULEE]: 'Annulée'
+    };
+    return labels[status];
   }
 
-  getPriorityColor(priorite: Priorite): string {
-    switch (priorite) {
-      case Priorite.URGENTE: return '#dc3545';
-      case Priorite.HAUTE: return '#fd7e14';
-      case Priorite.MOYENNE: return '#ffc107';
-      case Priorite.BASSE: return '#28a745';
-      default: return '#6c757d';
-    }
+  getPriorityLabel(priority: TaskPriority): string {
+    const labels: Record<TaskPriority, string> = {
+      [TaskPriority.BASSE]: 'Basse',
+      [TaskPriority.MOYENNE]: 'Moyenne',
+      [TaskPriority.HAUTE]: 'Haute',
+      [TaskPriority.URGENTE]: 'Urgente'
+    };
+    return labels[priority];
   }
-
-  getStatusClass(statut: Statut): string {
-    switch (statut) {
-      case Statut.A_FAIRE: return 'bg-secondary';
-      case Statut.EN_COURS: return 'bg-primary';
-      case Statut.TERMINEE: return 'bg-success';
-      case Statut.ANNULEE: return 'bg-danger';
-      default: return 'bg-light text-dark';
-    }
-  }
-
-  getStatutLabel(statut: Statut): string {
-    switch (statut) {
-      case Statut.A_FAIRE: return 'À faire';
-      case Statut.EN_COURS: return 'En cours';
-      case Statut.TERMINEE: return 'Terminée';
-      case Statut.ANNULEE: return 'Annulée';
-      default: return statut;
-    }
-  }
-
-  getPrioriteLabel(priorite: Priorite): string {
-    switch (priorite) {
-      case Priorite.BASSE: return 'Basse';
-      case Priorite.MOYENNE: return 'Moyenne';
-      case Priorite.HAUTE: return 'Haute';
-      case Priorite.URGENTE: return 'Urgente';
-      default: return priorite;
-    }
-  }
-
-  protected readonly Priorite = Priorite;
-  protected readonly Statut = Statut;
 }

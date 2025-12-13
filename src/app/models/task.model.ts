@@ -1,11 +1,11 @@
-export enum Priorite {
+export enum TaskPriority {
   BASSE = 'BASSE',
   MOYENNE = 'MOYENNE',
   HAUTE = 'HAUTE',
   URGENTE = 'URGENTE'
 }
 
-export enum Statut {
+export enum TaskStatus {
   A_FAIRE = 'A_FAIRE',
   EN_COURS = 'EN_COURS',
   TERMINEE = 'TERMINEE',
@@ -15,14 +15,27 @@ export enum Statut {
 export interface Task {
   id?: number;
   titre: string;
-  description: string;
-  date: string; // format: 'yyyy-MM-dd'
+  description?: string;
+  date: string; // Format YYYY-MM-DD
   heure?: string;
-  priorite: Priorite;
-  statut: Statut;
-  userId?: number;
+  priorite: TaskPriority;
+  statut: TaskStatus;
   createdAt?: string;
   updatedAt?: string;
+  userId?: number;
+}
+
+export interface TaskDTO {
+  id?: number;
+  titre: string;
+  description?: string;
+  date: string;
+  heure?: string;
+  priorite: TaskPriority;
+  statut: TaskStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: number;
 }
 
 export interface DashboardStats {

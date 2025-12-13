@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService, LoginRequest } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -12,23 +13,24 @@ import { AuthService, LoginRequest } from '../../../services/auth.service';
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-4">
         <div class="card shadow">
-          <div class="card-header bg-primary text-white">
+          <div class="card-header bg-primary text-white text-center py-3">
             <h4 class="mb-0">
-              <i class="fas fa-sign-in-alt me-2"></i>Connexion
+              <i class="fa fa-sign-in me-2"></i>Connexion
             </h4>
           </div>
-          <div class="card-body">
+
+          <div class="card-body p-4">
             <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
               <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  class="form-control"
-                  formControlName="email"
-                  [class.is-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+                <label for="email" class="form-label">
+                  <i class="fa fa-envelope me-1"></i> Email
+                </label>
+                <input type="email" id="email" formControlName="email"
+                       class="form-control"
+                       [class.is-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+                       placeholder="votre@email.com">
                 <div class="invalid-feedback" *ngIf="loginForm.get('email')?.errors?.['required']">
-                  L'email est requis
+                  L'email est obligatoire
                 </div>
                 <div class="invalid-feedback" *ngIf="loginForm.get('email')?.errors?.['email']">
                   Email invalide
@@ -36,40 +38,39 @@ import { AuthService, LoginRequest } from '../../../services/auth.service';
               </div>
 
               <div class="mb-3">
-                <label for="password" class="form-label">Mot de passe</label>
-                <input
-                  type="password"
-                  id="password"
-                  class="form-control"
-                  formControlName="password"
-                  [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+                <label for="password" class="form-label">
+                  <i class="fa fa-lock me-1"></i> Mot de passe
+                </label>
+                <input type="password" id="password" formControlName="password"
+                       class="form-control"
+                       [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+                       placeholder="Votre mot de passe">
                 <div class="invalid-feedback" *ngIf="loginForm.get('password')?.errors?.['required']">
-                  Le mot de passe est requis
+                  Le mot de passe est obligatoire
                 </div>
               </div>
 
-              <div class="mb-3" *ngIf="errorMessage">
-                <div class="alert alert-danger alert-dismissible fade show">
-                  {{ errorMessage }}
-                  <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
-                </div>
-              </div>
-
-              <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary" [disabled]="loginForm.invalid || isLoading">
-                  <span *ngIf="!isLoading">Se connecter</span>
-                  <span *ngIf="isLoading">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                    Connexion...
+              <div class="d-grid gap-2 mb-3">
+                <button type="submit" class="btn btn-primary" [disabled]="loading || loginForm.invalid">
+                  <span *ngIf="!loading">
+                    <i class="fa fa-sign-in me-1"></i> Se connecter
+                  </span>
+                  <span *ngIf="loading">
+                    <i class="fa fa-spinner fa-spin me-1"></i> Connexion...
                   </span>
                 </button>
               </div>
+
+              <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show">
+                {{ errorMessage }}
+                <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+              </div>
             </form>
 
-            <div class="mt-3 text-center">
+            <div class="text-center mt-3">
               <p class="mb-0">
                 Pas encore de compte ?
-                <a routerLink="/register" class="text-primary">S'inscrire</a>
+                <a routerLink="/register" class="text-decoration-none">S'inscrire</a>
               </p>
             </div>
           </div>
@@ -77,41 +78,60 @@ import { AuthService, LoginRequest } from '../../../services/auth.service';
       </div>
     </div>
   `,
-  styles: []
+  styles: [`
+    .card {
+      margin-top: 100px;
+      border: none;
+    }
+
+    .card-header {
+      border-radius: 0 !important;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+    }
+  `]
 })
 export class LoginComponent {
-  private fb = inject(FormBuilder);
-  private authService = inject(AuthService);
-  private router = inject(Router);
-
   loginForm: FormGroup;
-  isLoading = false;
+  loading = false;
   errorMessage = '';
 
-  constructor() {
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required]
     });
+    this.route.queryParams.subscribe(params => {
+      if (params['registered'] === 'true') {
+        this.successMessage = 'Inscription réussie ! Vous pouvez maintenant vous connecter.';
+      }
+    });
   }
 
-  onSubmit(): void {
+  successMessage = '';
+
+  onSubmit() {
     if (this.loginForm.valid) {
-      this.isLoading = true;
+      this.loading = true;
       this.errorMessage = '';
 
-      const credentials: LoginRequest = this.loginForm.value;
-
-      this.authService.login(credentials).subscribe({
+      this.authService.login(this.loginForm.value).subscribe({
         next: () => {
           this.router.navigate(['/dashboard']);
         },
         error: (error) => {
-          this.isLoading = false;
-          this.errorMessage = error.error?.error || 'Échec de la connexion. Veuillez réessayer.';
+          this.loading = false;
+          this.errorMessage = error.error?.error || 'Erreur de connexion';
         },
         complete: () => {
-          this.isLoading = false;
+          this.loading = false;
         }
       });
     }
