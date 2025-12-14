@@ -71,7 +71,7 @@ import { AuthService } from './services/auth.service';
 
     <footer class="bg-light text-center py-3 mt-5 border-top">
       <div class="container">
-        <span class="text-muted">© 2024 Mon Agenda - Gestion de tâches</span>
+        <span class="text-muted">© 2025 Mon Agenda - Gestion de tâches</span>
       </div>
     </footer>
   `,

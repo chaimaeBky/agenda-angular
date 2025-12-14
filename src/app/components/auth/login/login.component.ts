@@ -123,7 +123,8 @@ export class LoginComponent {
       this.errorMessage = '';
 
       this.authService.login(this.loginForm.value).subscribe({
-        next: () => {
+        next: (response) => {
+          // Le token est déjà sauvegardé dans le AuthService
           this.router.navigate(['/dashboard']);
         },
         error: (error) => {

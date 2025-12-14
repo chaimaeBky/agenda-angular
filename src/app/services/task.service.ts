@@ -13,35 +13,36 @@ export class TaskService {
 
   // Tâches
   getAllTasks(): Observable<Task[]> {
-    return this.http.get<Task[]>(`${this.apiUrl}/tasks`, { withCredentials: true });
+    return this.http.get<Task[]>(`${this.apiUrl}/tasks`);
+
   }
 
   getTaskById(id: number): Observable<Task> {
-    return this.http.get<Task>(`${this.apiUrl}/tasks/${id}`, { withCredentials: true });
+    return this.http.get<Task>(`${this.apiUrl}/tasks/${id}`);
   }
 
   createTask(task: TaskDTO): Observable<Task> {
-    return this.http.post<Task>(`${this.apiUrl}/tasks`, task, { withCredentials: true });
+    return this.http.post<Task>(`${this.apiUrl}/tasks`, task);
   }
 
   updateTask(id: number, task: TaskDTO): Observable<Task> {
-    return this.http.put<Task>(`${this.apiUrl}/tasks/${id}`, task, { withCredentials: true });
+    return this.http.put<Task>(`${this.apiUrl}/tasks/${id}`, task);
   }
 
   deleteTask(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/tasks/${id}`, { withCredentials: true });
+    return this.http.delete(`${this.apiUrl}/tasks/${id}`);
   }
 
   getTasksByDate(date: string): Observable<Task[]> {
-    return this.http.get<Task[]>(`${this.apiUrl}/tasks/date/${date}`, { withCredentials: true });
+    return this.http.get<Task[]>(`${this.apiUrl}/tasks/date/${date}`);
   }
 
   getTasksByMonth(year: number, month: number): Observable<Task[]> {
-    return this.http.get<Task[]>(`${this.apiUrl}/tasks/calendar/${year}/${month}`, { withCredentials: true });
+    return this.http.get<Task[]>(`${this.apiUrl}/tasks/calendar/${year}/${month}`);
   }
 
   // Dashboard
   getDashboardStats(): Observable<DashboardStats> {
-    return this.http.get<DashboardStats>(`${this.apiUrl}/dashboard/stats`, { withCredentials: true });
+    return this.http.get<DashboardStats>(`${this.apiUrl}/dashboard/stats`);
   }
 }

@@ -11,50 +11,83 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser = this.currentUserSubject.asObservable();
 
+  private tokenKey = 'auth_token';
+  private userKey = 'current_user';
+
   constructor(private http: HttpClient) {
     this.checkAuthStatus();
   }
 
   private checkAuthStatus(): void {
-    this.http.get<User>(`${this.apiUrl}/me`, { withCredentials: true }).subscribe({
-      next: (user) => {
+    const token = this.getToken();
+    const savedUser = localStorage.getItem(this.userKey);
+
+    if (token && savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
         this.currentUserSubject.next(user);
-      },
-      error: () => {
-        this.currentUserSubject.next(null);
+      } catch (e) {
+        this.clearAuthData();
       }
-    });
+    }
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials, { withCredentials: true })
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials)
       .pipe(
         tap(response => {
-          this.currentUserSubject.next(response.user);
+          if (response.token) {
+            this.saveToken(response.token);
+          }
+          if (response.user) {
+            this.saveUser(response.user);
+            this.currentUserSubject.next(response.user);
+          }
         })
       );
   }
 
   register(userData: RegisterRequest): Observable<AuthResponse> {
-
-    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, userData, { withCredentials: true });
-
+    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, userData);
   }
 
   logout(): Observable<any> {
-    return this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
-      .pipe(
-        tap(() => {
-          this.currentUserSubject.next(null);
-        })
-      );
+    return this.http.post(`${this.apiUrl}/logout`, {}).pipe(
+      tap(() => {
+        this.clearAuthData();
+        this.currentUserSubject.next(null);
+      })
+    );
+  }
+
+  // Méthodes pour gérer le token JWT
+  saveToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem(this.tokenKey);
+  }
+
+  saveUser(user: User): void {
+    localStorage.setItem(this.userKey, JSON.stringify(user));
+  }
+
+  getUser(): User | null {
+    const userStr = localStorage.getItem(this.userKey);
+    return userStr ? JSON.parse(userStr) : null;
+  }
+
+  clearAuthData(): void {
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.userKey);
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getToken();
   }
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.currentUserSubject.value;
   }
 }

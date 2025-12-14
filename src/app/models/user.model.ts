@@ -17,5 +17,6 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   message: string;
+  token?: string; // AJOUTÉ POUR JWT
   user: User;
 }
