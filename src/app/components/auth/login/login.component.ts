@@ -80,12 +80,14 @@ import { ActivatedRoute } from '@angular/router';
   `,
   styles: [`
     .card {
-      margin-top: 100px;
       border: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
     .card-header {
-      border-radius: 0 !important;
+      background: transparent;
+      border-bottom: 1px solid #eaeaea;
+      color: #333;
     }
 
     .btn:disabled {

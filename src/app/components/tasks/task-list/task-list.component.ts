@@ -120,21 +120,18 @@ import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
                 </td>
                 <td>{{ task.heure || 'Non définie' }}</td>
                 <td>
-                    <span class="badge"
-                          [class.bg-success]="task.priorite === 'BASSE'"
-                          [class.bg-primary]="task.priorite === 'MOYENNE'"
-                          [class.bg-warning]="task.priorite === 'HAUTE'"
-                          [class.bg-danger]="task.priorite === 'URGENTE'">
-                      {{ getPriorityLabel(task.priorite) }}
+                    <span class="badge priority-badge" [class.priority-low]="task.priorite === 'BASSE'"
+                          [class.priority-medium]="task.priorite === 'MOYENNE'"
+                          [class.priority-high]="task.priorite === 'HAUTE'"
+                          [class.priority-urgent]="task.priorite === 'URGENTE'">
+                            {{ getPriorityLabel(task.priorite) }}
                     </span>
                 </td>
                 <td>
-                    <span class="badge"
-                          [class.bg-secondary]="task.statut === 'A_FAIRE'"
-                          [class.bg-warning]="task.statut === 'EN_COURS'"
-                          [class.bg-success]="task.statut === 'TERMINEE'"
-                          [class.bg-dark]="task.statut === 'ANNULEE'">
-                      {{ getStatusLabel(task.statut) }}
+                    <span class="badge status-badge" [class.status-todo]="task.statut === 'A_FAIRE'"
+                          [class.status-progress]="task.statut === 'EN_COURS'"
+                          [class.status-done]="task.statut === 'TERMINEE'">
+                            {{ getStatusLabel(task.statut) }}
                     </span>
                 </td>
                 <td>

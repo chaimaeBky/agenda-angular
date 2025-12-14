@@ -12,7 +12,7 @@ import { AuthService } from '../../../services/auth.service';
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-4">
         <div class="card shadow">
-          <div class="card-header bg-success text-white text-center py-3">
+          <div class="card-header bg-primary text-white text-center py-3">
             <h4 class="mb-0">
               <i class="fa fa-user-plus me-2"></i>Inscription
             </h4>
@@ -72,7 +72,7 @@ import { AuthService } from '../../../services/auth.service';
               </div>
 
               <div class="d-grid gap-2 mb-3">
-                <button type="submit" class="btn btn-success" [disabled]="loading || registerForm.invalid">
+                <button type="submit" class="btn btn-primary" [disabled]="loading || registerForm.invalid">
                   <span *ngIf="!loading">
                     <i class="fa fa-user-plus me-1"></i> S'inscrire
                   </span>
@@ -85,6 +85,11 @@ import { AuthService } from '../../../services/auth.service';
               <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show">
                 {{ errorMessage }}
                 <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+              </div>
+
+              <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show">
+                {{ successMessage }}
+                <button type="button" class="btn-close" (click)="successMessage = ''"></button>
               </div>
             </form>
 
@@ -101,12 +106,18 @@ import { AuthService } from '../../../services/auth.service';
   `,
   styles: [`
     .card {
-      margin-top: 80px;
       border: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
     .card-header {
-      border-radius: 0 !important;
+      background: transparent;
+      border-bottom: 1px solid #eaeaea;
+      color: #333;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
     }
   `]
 })
@@ -132,17 +143,16 @@ export class RegisterComponent {
     if (this.registerForm.valid) {
       this.loading = true;
       this.errorMessage = '';
+      this.successMessage = '';
 
       this.authService.register(this.registerForm.value).subscribe({
         next: (response) => {
           this.loading = false;
           this.successMessage = 'Inscription réussie ! Redirection vers la page de connexion...';
 
-
+          // Redirection vers login après 2 secondes
           setTimeout(() => {
-            this.router.navigate(['/login'], {
-              queryParams: { registered: 'true' }
-            });
+            this.router.navigate(['/login']);
           }, 2000);
         },
         error: (error) => {

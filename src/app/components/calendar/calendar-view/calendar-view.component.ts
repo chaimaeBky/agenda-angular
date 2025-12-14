@@ -98,18 +98,23 @@ import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
               <tr *ngFor="let week of calendarWeeks">
                 <td *ngFor="let day of week"
                     [class.table-secondary]="!day.isCurrentMonth"
-                    [class.today]="day.isToday"
+                    [class.bg-primary]="day.isToday"
+                    [class.text-white]="day.isToday"
                     class="calendar-day p-2"
                     [style.height]="'150px'"
                     (click)="selectDay(day)">
 
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                        <span class="badge" [class.bg-primary]="day.isToday">
-                          {{ day.date.getDate() }}
+                        <span class="badge"
+                              [class.bg-primary]="day.isToday"
+                              [class.bg-light]="!day.isToday && day.isCurrentMonth"
+                              [class.text-dark]="!day.isToday && day.isCurrentMonth"
+                              [class.bg-secondary]="!day.isCurrentMonth">
+                          {{ day.dayNumber }}
                         </span>
                       <small class="text-muted ms-1" *ngIf="!day.isCurrentMonth">
-                        {{ getMonthName(day.date.getMonth()) }}
+                        {{ getMonthNameShort(day.date.getMonth() + 1) }}
                       </small>
                     </div>
                     <small *ngIf="day.taskCount > 0" class="badge bg-info">
@@ -122,7 +127,7 @@ import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
                          class="task-item small mb-1 p-1 rounded"
                          [class.bg-success]="task.statut === 'TERMINEE'"
                          [class.bg-warning]="task.statut === 'EN_COURS'"
-                         [class.bg-primary]="task.statut === 'A_FAIRE'"
+                         [class.bg-primary]="task.statut === 'A_FAIRE' && task.priorite !== 'URGENTE'"
                          [class.bg-danger]="task.priorite === 'URGENTE'"
                          [style.opacity]="task.statut === 'TERMINEE' ? '0.7' : '1'"
                          (click)="viewTask(task); $event.stopPropagation()">
@@ -173,7 +178,7 @@ import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
             </div>
             <div class="col-auto mb-2">
               <span class="badge bg-danger me-1">Urgente</span>
-              <small>Priorité urgente </small>
+              <small>Priorité urgente</small>
             </div>
             <div class="col-auto mb-2">
               <span class="badge bg-info me-1">Nombre</span>
@@ -263,6 +268,10 @@ import { Task, TaskPriority, TaskStatus } from '../../../models/task.model';
     .table-bordered th, .table-bordered td {
       border: 1px solid #dee2e6;
     }
+
+    .bg-primary.text-white {
+      color: white !important;
+    }
   `]
 })
 export class CalendarViewComponent implements OnInit {
@@ -297,6 +306,7 @@ export class CalendarViewComponent implements OnInit {
     this.taskService.getTasksByMonth(this.currentYear, this.currentMonth).subscribe({
       next: (tasks) => {
         this.tasks = tasks;
+        console.log('Tâches chargées:', tasks); // DEBUG
         this.applyFilters();
         this.loading = false;
         this.generateCalendar();
@@ -323,48 +333,52 @@ export class CalendarViewComponent implements OnInit {
   generateCalendar() {
     this.calendarWeeks = [];
 
-    // Premier jour du mois
-    const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1);
-    // Dernier jour du mois
-    const lastDay = new Date(this.currentYear, this.currentMonth, 0);
+    // Premier jour du mois courant
+    const firstDayOfMonth = new Date(this.currentYear, this.currentMonth - 1, 1);
+    // Dernier jour du mois courant
+    const lastDayOfMonth = new Date(this.currentYear, this.currentMonth, 0);
 
-    // Premier jour de la semaine (Lundi = 1, ajustement pour JS où Dimanche = 0)
-    let firstDayOfWeek = firstDay.getDay();
-    if (firstDayOfWeek === 0) firstDayOfWeek = 7; // Dimanche devient 7
-    firstDayOfWeek--; // Ajuster pour commencer à 0 (Lundi)
+    // Jour de la semaine du premier jour (0 = Dimanche, 1 = Lundi, etc.)
+    const firstDayOfWeek = firstDayOfMonth.getDay();
+    // Ajuster pour que Lundi = 0
+    const adjustedFirstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
-    // Dernier jour de la semaine
-    let lastDayOfWeek = lastDay.getDay();
-    if (lastDayOfWeek === 0) lastDayOfWeek = 7;
-    lastDayOfWeek--;
-
-    // Date du jour
+    // Date du jour actuel
     const today = new Date();
-    const isToday = (date: Date) =>
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear();
+    const todayStr = this.formatDate(today);
 
-    // Calculer les dates
-    let currentDate = new Date(firstDay);
-    currentDate.setDate(currentDate.getDate() - firstDayOfWeek);
+    // Date de départ (premier jour à afficher)
+    let currentDate = new Date(firstDayOfMonth);
+    currentDate.setDate(currentDate.getDate() - adjustedFirstDayOfWeek);
 
-    // Générer 6 semaines (maximum)
+    // Générer 6 semaines
     for (let week = 0; week < 6; week++) {
       const weekDays = [];
 
       for (let day = 0; day < 7; day++) {
         const date = new Date(currentDate);
+        const dateStr = this.formatDate(date);
         const isCurrentMonth = date.getMonth() === this.currentMonth - 1;
+        const isToday = dateStr === todayStr;
 
-        // Trouver les tâches pour ce jour
-        const dateStr = date.toISOString().split('T')[0];
-        const dayTasks = this.filteredTasks.filter(task => task.date === dateStr);
+        // Trouver les tâches pour ce jour - CORRECTION ICI
+        const dayTasks = this.filteredTasks.filter(task => {
+          // Normaliser les deux dates pour comparer
+          const taskDate = new Date(task.date);
+          const calendarDate = new Date(dateStr);
+
+          // Mettre à minuit pour éviter les problèmes de fuseau horaire
+          taskDate.setHours(0, 0, 0, 0);
+          calendarDate.setHours(0, 0, 0, 0);
+
+          return taskDate.getTime() === calendarDate.getTime();
+        });
 
         weekDays.push({
           date: date,
+          dayNumber: date.getDate(),
           isCurrentMonth: isCurrentMonth,
-          isToday: isToday(date),
+          isToday: isToday,
           taskCount: dayTasks.length,
           tasks: dayTasks.slice(0, 3) // Limiter à 3 tâches pour l'affichage
         });
@@ -375,11 +389,21 @@ export class CalendarViewComponent implements OnInit {
 
       this.calendarWeeks.push(weekDays);
 
-      // Si nous avons dépassé le dernier jour du mois et que nous sommes dans le mois suivant
-      if (currentDate.getMonth() > this.currentMonth % 12 && currentDate > lastDay) {
+      // Arrêter si on a dépassé le dernier jour du mois suivant
+      if (currentDate > lastDayOfMonth && currentDate.getMonth() !== this.currentMonth - 1) {
         break;
       }
     }
+
+    console.log('Calendrier généré:', this.calendarWeeks); // DEBUG
+  }
+
+  // Helper pour formater la date au format YYYY-MM-DD
+  private formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   previousMonth() {
@@ -412,6 +436,7 @@ export class CalendarViewComponent implements OnInit {
   selectDay(day: any) {
     this.selectedDay = day;
     this.selectedDayTasks = day.tasks;
+    console.log('Jour sélectionné:', day.date, 'Tâches:', day.tasks.length);
   }
 
   viewTask(task: Task) {
@@ -429,7 +454,13 @@ export class CalendarViewComponent implements OnInit {
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ];
-    return months[month - 1];
+    return months[month - 1] || '';
+  }
+
+  getMonthNameShort(month: number): string {
+    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
+      'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    return months[month - 1] || '';
   }
 
   getStatusLabel(status: TaskStatus): string {
